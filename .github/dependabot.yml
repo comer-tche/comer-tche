@@ -1,0 +1,47 @@
+# Dependabot: atualizacao automatica de dependencias.
+#
+# Complementa a condicao C3 do pipeline (secao 20.3 do trabalho). O `npm audit`
+# do C3 barra a entrega quando ja existe uma dependencia vulneravel; o
+# Dependabot age antes disso, abrindo um pull request assim que uma versao
+# nova sai. Um interrompe, o outro previne.
+#
+# A premissa vem da primeira aula da disciplina: basta uma vulnerabilidade para
+# o sistema ser considerado inseguro, e ela nao precisa ter sido escrita por
+# nos. Uma biblioteca de terceiros desatualizada anula controles implementados
+# corretamente no nosso codigo.
+
+version: 2
+
+updates:
+  # Bibliotecas da aplicacao.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: scope
+    groups:
+      # Atualizacoes de correcao e menores viram um pull request so, para nao
+      # inundar o repositorio. Mudancas de versao maior vem separadas, porque
+      # podem quebrar a aplicacao e merecem leitura individual.
+      dependencias-de-rotina:
+        update-types:
+          - minor
+          - patch
+
+  # As proprias acoes usadas no pipeline. Uma acao desatualizada e uma
+  # dependencia como qualquer outra, e roda com acesso ao repositorio.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: "ci"
