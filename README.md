@@ -90,11 +90,16 @@ Nenhum controle aqui foi escolhido durante a programação. Cada um tem origem e
 | Telefone e endereço ocultos após a entrega | Decisão 3 | R08 | `lib/minimizacao.ts` |
 | Limite de requisições por conta e por origem | Decisão 4 | R09 | `lib/limite-de-requisicoes.ts` |
 
-### Uma decisão que a implementação obrigou a rever
+### Onde a autorização é decidida
 
-A Decisão 1 da arquitetura pede "validação centralizada de autorização". Em Next.js, o lugar aparentemente natural para isso é o `middleware.ts`, e ele é justamente o lugar errado: a **CVE-2025-29927**, de severidade 9.1, permitia pular o middleware inteiro enviando um cabeçalho, e a descrição oficial diz que a falha atinge quem faz a checagem de autorização ali. O CWE dessa vulnerabilidade é o **CWE-285**, o mesmo que a análise já havia mapeado para o risco R10.
+A Decisão 1 da arquitetura pede "validação centralizada de autorização". Em Next.js, o arquivo de borda do framework parece o lugar natural para isso. Ele se chamava `middleware.ts` até a versão 15 e `proxy.ts` a partir da 16.
 
-A centralização foi mantida, mas em um módulo único chamado dentro de cada rota. O `middleware.ts` não decide acesso. O raciocínio completo está comentado em `lib/autorizacao.ts`.
+A borda serve para verificação rápida e redirecionamento, mas não deve ser a única linha de defesa. A maior parte das verificações precisa ficar o mais perto possível da fonte de dados, e cada rota de API é tratada como um endpoint público que confere por conta própria quem está chamando. É o que recomenda a documentação do framework. Duas razões sustentam essa recomendação:
+
+- **A borda decide por padrão de caminho.** Uma rota nova que não case com o padrão nasce desprotegida.
+- **Uma falha na borda vale para todas as rotas ao mesmo tempo.** A **CVE-2025-29927**, de severidade 9.1, é o exemplo. Um cabeçalho pulava o middleware inteiro, e quem verificava autorização apenas ali ficava exposto por completo. A falha foi corrigida na versão 15.2.3, e este projeto roda a 16.3.1.
+
+A centralização exigida pela Decisão 1 vem, então, de um módulo único chamado dentro de cada rota. É o padrão que a documentação chama de **Data Access Layer**. O CWE atribuído à CVE é o **CWE-285**, o mesmo que a análise já havia mapeado para o risco R10. O raciocínio completo está comentado em `lib/autorizacao.ts`.
 
 ## Testes de segurança
 
