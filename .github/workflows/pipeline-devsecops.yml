@@ -20,7 +20,7 @@ on:
 
 jobs:
   c1-testes-de-autorizacao:
-    name: "C1: testes de seguranca (TS01 a TS09)"
+    name: "C1: testes de seguranca (TS01 a TS11)"
     runs-on: ubuntu-latest
 
     env:
