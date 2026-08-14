@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Comer-Tchê!" width="180">
+</p>
+
 # Comer-Tchê!
 
 Sistema de delivery usado como estudo de caso da disciplina de **Engenharia de Software Seguro** (UNIPAMPA).
