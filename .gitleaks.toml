@@ -1,0 +1,21 @@
+# Configuracao do gitleaks, usado na condicao C2 do pipeline: nenhum segredo
+# pode estar versionado no repositorio.
+#
+# Partimos das regras padrao da ferramenta e acrescentamos uma unica excecao,
+# declarada de forma explicita.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+O arquivo .env.example existe para documentar quais variaveis a aplicacao
+precisa, e os valores dentro dele sao textos de preenchimento, nao segredos.
+A ferramenta os acusa porque avalia a entropia do texto, sem saber se ele e
+usado de verdade em algum lugar.
+
+A excecao e por caminho e vale so para esse arquivo. O .env real continua no
+.gitignore e continua sendo varrido: se alguem versionar um segredo de fato,
+em qualquer outro arquivo, o pipeline barra.
+"""
+paths = ['''\.env\.example$''']
