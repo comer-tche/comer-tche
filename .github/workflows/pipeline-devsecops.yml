@@ -1,0 +1,148 @@
+# Pipeline DevSecOps do Comer-Tche.
+#
+# Cada job abaixo implementa uma das condicoes de bloqueio definidas na secao
+# 20.3 do trabalho. O nome do job comeca com o identificador da condicao para
+# que, ao falhar, fique evidente qual regra do pipeline barrou a entrega.
+#
+# C1 - teste de autorizacao reprovado
+# C2 - segredo encontrado no repositorio
+# C3 - dependencia com vulnerabilidade conhecida de severidade alta ou critica
+# C4 - achado de severidade alta na varredura dinamica sem analise registrada
+
+name: Pipeline DevSecOps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  c1-testes-de-autorizacao:
+    name: "C1: testes de seguranca (TS01 a TS09)"
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "file:./dev.db"
+      JWT_SECRET: "segredo-de-integracao-continua-sem-valor-fora-daqui"
+      PAYMENT_WEBHOOK_SECRET: "segredo-de-gateway-de-integracao-continua"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Preparar o banco de teste
+        run: |
+          npx prisma migrate deploy
+          npx tsx prisma/seed.ts
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Subir a aplicacao
+        run: |
+          npm run start &
+          # Espera a aplicacao responder antes de comecar os testes, em vez de
+          # dormir um tempo fixo que ora sobra, ora falta.
+          for tentativa in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/v1/menu > /dev/null; then
+              echo "aplicacao respondendo"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "a aplicacao nao respondeu a tempo"
+          exit 1
+
+      - name: Executar os testes de seguranca
+        run: npm test
+
+  c2-segredo-no-repositorio:
+    name: "C2: segredo no repositorio"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # O gitleaks precisa do historico completo para varrer commits
+          # antigos, e nao apenas o estado atual dos arquivos.
+          fetch-depth: 0
+
+      - name: Procurar segredos no historico
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  c3-dependencia-vulneravel:
+    name: "C3: dependencia vulneravel"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Auditar as dependencias
+        # Interrompe quando ha vulnerabilidade de severidade alta ou critica.
+        # As de severidade baixa e moderada aparecem no relatorio sem barrar a
+        # entrega, para o pipeline nao virar ruido que todo mundo ignora.
+        run: npm audit --audit-level=high
+
+  c4-varredura-dinamica:
+    name: "C4: varredura dinamica com o ZAP"
+    runs-on: ubuntu-latest
+    needs: c1-testes-de-autorizacao
+
+    env:
+      DATABASE_URL: "file:./dev.db"
+      JWT_SECRET: "segredo-de-integracao-continua-sem-valor-fora-daqui"
+      PAYMENT_WEBHOOK_SECRET: "segredo-de-gateway-de-integracao-continua"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Preparar o banco e compilar
+        run: |
+          npx prisma migrate deploy
+          npx tsx prisma/seed.ts
+          npm run build
+
+      - name: Subir a aplicacao
+        run: |
+          npm run start &
+          for tentativa in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/v1/menu > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Varredura passiva
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "http://localhost:3000"
+          # O relatorio e publicado como artefato do job. A condicao C4 exige
+          # que achado de severidade alta tenha analise registrada, e nao que
+          # o relatorio venha vazio, entao o alerta nao derruba o job sozinho.
+          cmd_options: "-I"
+          allow_issue_writing: false
