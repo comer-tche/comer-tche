@@ -2,7 +2,7 @@
 
 Sistema de delivery usado como estudo de caso da disciplina de **Engenharia de Software Seguro** (UNIPAMPA).
 
-A análise de segurança que originou este código está no repositório do trabalho: **[software-seguro](https://github.com/lucascrodriguess/software-seguro)**. Lá estão a modelagem de ameaças com STRIDE, o registro de riscos, os requisitos de segurança, as decisões de arquitetura e o pipeline DevSecOps. Aqui está a implementação dessas decisões.
+A análise de segurança que originou este código está em **[software-seguro](https://github.com/comer-tche/software-seguro)**: modelagem de ameaças com STRIDE, registro de riscos, requisitos de segurança, decisões de arquitetura e pipeline DevSecOps. Aqui está a implementação dessas decisões.
 
 ## Como este repositório é construído
 
