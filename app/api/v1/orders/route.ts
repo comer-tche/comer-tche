@@ -1,5 +1,5 @@
 import { banco } from "@/lib/banco";
-import { sessaoDaRequisicao } from "@/lib/sessao";
+import { exigirSessao } from "@/lib/autorizacao";
 
 // POST /api/v1/orders
 // Fecha um pedido (checkout).
@@ -13,10 +13,9 @@ import { sessaoDaRequisicao } from "@/lib/sessao";
 // RS04.
 
 export async function POST(requisicao: Request) {
-  const sessao = await sessaoDaRequisicao(requisicao);
-  if (!sessao) {
-    return Response.json({ erro: "Nao autenticado" }, { status: 401 });
-  }
+  const veredito = await exigirSessao(requisicao);
+  if (!veredito.autorizado) return veredito.resposta;
+  const { sessao } = veredito;
 
   const corpo = await requisicao.json();
 
@@ -42,10 +41,9 @@ export async function POST(requisicao: Request) {
 // GET /api/v1/orders
 // Lista os pedidos do proprio cliente autenticado.
 export async function GET(requisicao: Request) {
-  const sessao = await sessaoDaRequisicao(requisicao);
-  if (!sessao) {
-    return Response.json({ erro: "Nao autenticado" }, { status: 401 });
-  }
+  const veredito = await exigirSessao(requisicao);
+  if (!veredito.autorizado) return veredito.resposta;
+  const { sessao } = veredito;
 
   const pedidos = await banco.order.findMany({
     where: { clienteId: sessao.usuarioId },

@@ -1,22 +1,19 @@
 import { banco } from "@/lib/banco";
-import { sessaoDaRequisicao } from "@/lib/sessao";
+import { exigirPerfil } from "@/lib/autorizacao";
+import { registrar } from "@/lib/auditoria";
 
 // GET /api/v1/admin/users
 // Lista todos os usuarios da plataforma. Rota administrativa.
 //
-// ATENCAO, VULNERABILIDADE PROPOSITAL NESTA VERSAO.
-// A rota exige apenas que exista alguem autenticado. Nao verifica o perfil.
-// Qualquer conta de cliente que chame este endereco direto, sem passar pela
-// interface, recebe a lista completa de usuarios. Esconder o botao na tela
-// nao e protecao, e e exatamente o que a Decisao 1 da Etapa 3 diz. E o risco
-// R10 do trabalho. A verificacao de perfil entra no commit que aplica o
-// requisito RS01.
+// Requisito RS01: o perfil e verificado no servidor, em toda requisicao,
+// independentemente do que a interface mostra. Esconder o botao na tela nao
+// protege nada, porque qualquer pessoa chama este endereco direto.
+//
+// Trata o risco R10 (obtencao de funcoes administrativas).
 
 export async function GET(requisicao: Request) {
-  const sessao = await sessaoDaRequisicao(requisicao);
-  if (!sessao) {
-    return Response.json({ erro: "Nao autenticado" }, { status: 401 });
-  }
+  const veredito = await exigirPerfil(requisicao, ["ADMIN"]);
+  if (!veredito.autorizado) return veredito.resposta;
 
   const usuarios = await banco.user.findMany({
     select: {
@@ -29,6 +26,16 @@ export async function GET(requisicao: Request) {
       criadoEm: true,
     },
     orderBy: { id: "asc" },
+  });
+
+  // Consulta a dados de todos os usuarios e evento relevante por si so, mesmo
+  // quando legitima: e o que permite investigar uma exportacao em massa
+  // depois de um incidente.
+  await registrar({
+    acao: "CONSULTA_ADMINISTRATIVA",
+    requisicao,
+    sessao: veredito.sessao,
+    detalhe: `listou ${usuarios.length} usuarios`,
   });
 
   return Response.json(usuarios);

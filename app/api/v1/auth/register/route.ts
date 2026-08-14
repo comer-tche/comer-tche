@@ -25,11 +25,12 @@ export async function POST(requisicao: Request) {
       nome: corpo.nome,
       telefone: corpo.telefone,
       endereco: corpo.endereco,
-      // O perfil vem do corpo da requisicao nesta versao inicial.
-      // Isso permite que qualquer pessoa se cadastre como ADMIN, e e o
-      // risco R10 do trabalho. O controle que fecha essa porta entra no
-      // commit que aplica o requisito RS01.
-      perfil: corpo.perfil ?? "CLIENTE",
+      // O perfil nunca vem do corpo da requisicao. Toda conta criada por
+      // esta rota publica nasce como CLIENTE. Aceitar o perfil enviado pelo
+      // cliente permitiria a qualquer pessoa se cadastrar como ADMIN, que e
+      // o risco R10. Perfis privilegiados sao concedidos por um
+      // administrador, em rota propria e com registro de auditoria.
+      perfil: "CLIENTE",
     },
   });
 
