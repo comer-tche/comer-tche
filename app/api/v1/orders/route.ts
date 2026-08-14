@@ -2,6 +2,7 @@ import { z } from "zod";
 import { banco } from "@/lib/banco";
 import { exigirSessao } from "@/lib/autorizacao";
 import { registrar } from "@/lib/auditoria";
+import { dentroDoLimite, LIMITES } from "@/lib/limite-de-requisicoes";
 
 // POST /api/v1/orders
 // Fecha um pedido (checkout).
@@ -38,6 +39,11 @@ export async function POST(requisicao: Request) {
   const veredito = await exigirSessao(requisicao);
   if (!veredito.autorizado) return veredito.resposta;
   const { sessao } = veredito;
+
+  // Criar pedido escreve no banco e chama o gateway, entao custa muito mais
+  // do que uma leitura. O limite aqui trata o risco R09.
+  const limite = await dentroDoLimite(requisicao, LIMITES.criacaoDePedido, sessao);
+  if (!limite.permitido) return limite.resposta;
 
   const corpoBruto = await requisicao.json().catch(() => null);
   const validado = PedidoRecebido.safeParse(corpoBruto);
@@ -118,6 +124,9 @@ export async function GET(requisicao: Request) {
   const veredito = await exigirSessao(requisicao);
   if (!veredito.autorizado) return veredito.resposta;
   const { sessao } = veredito;
+
+  const limite = await dentroDoLimite(requisicao, LIMITES.consulta, sessao);
+  if (!limite.permitido) return limite.resposta;
 
   const pedidos = await banco.order.findMany({
     where: { clienteId: sessao.usuarioId },

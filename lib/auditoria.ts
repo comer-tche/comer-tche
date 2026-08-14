@@ -22,7 +22,8 @@ export type AcaoAuditavel =
   | "DIVERGENCIA_DE_VALOR"
   | "WEBHOOK_ASSINATURA_INVALIDA"
   | "WEBHOOK_ACEITO"
-  | "CONSULTA_ADMINISTRATIVA";
+  | "CONSULTA_ADMINISTRATIVA"
+  | "LIMITE_EXCEDIDO";
 
 type Registro = {
   acao: AcaoAuditavel;

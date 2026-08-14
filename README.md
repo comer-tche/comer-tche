@@ -88,6 +88,7 @@ Nenhum controle aqui foi escolhido durante a programação. Cada um tem origem e
 | Assinatura HMAC-SHA256 na confirmação de pagamento | RS04 | R04 | `app/api/v1/payments/webhook/route.ts` |
 | Identificador do pedido em UUID | Decisão 3 | R07 | `prisma/schema.prisma` |
 | Telefone e endereço ocultos após a entrega | Decisão 3 | R08 | `lib/minimizacao.ts` |
+| Limite de requisições por conta e por origem | Decisão 4 | R09 | `lib/limite-de-requisicoes.ts` |
 
 ### Uma decisão que a implementação obrigou a rever
 
@@ -102,7 +103,7 @@ npm run build && npm run start &   # a aplicação precisa estar no ar
 npm test
 ```
 
-São os oito testes definidos na Etapa 4 do trabalho, com os mesmos identificadores (TS01 a TS08) e os mesmos resultados esperados, mais o TS09, que verifica a exigência do segundo fator. Eles rodam contra a API, e não contra as funções internas, porque o que precisa ser verificado é o comportamento visto por quem chama de fora.
+São os oito testes definidos na Etapa 4 do trabalho, com os mesmos identificadores (TS01 a TS08) e os mesmos resultados esperados, mais três acrescentados durante a implementação: o TS09 verifica a exigência do segundo fator, o TS10 que o reenvio da mesma confirmação de pagamento não processa duas vezes, e o TS11 que uma rajada de requisições é barrada. Eles rodam contra a API, e não contra as funções internas, porque o que precisa ser verificado é o comportamento visto por quem chama de fora.
 
 ## Pipeline
 

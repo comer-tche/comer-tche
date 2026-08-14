@@ -190,6 +190,59 @@ describe("Segundo fator em aparelho nao reconhecido (RS03)", () => {
   });
 });
 
+describe("Idempotencia e disponibilidade", () => {
+  it("TS10: reenvio da mesma confirmacao de pagamento nao processa duas vezes", async () => {
+    // Cenario que o gateway produz sozinho: se ele nao recebe a resposta, ele
+    // reenvia a mesma confirmacao. O reenvio precisa ser inofensivo, e nao
+    // fazer o pedido avancar de novo.
+    const corpo = JSON.stringify({
+      pedidoId: ctx.pedidoDeA,
+      valorEmCentavos: await totalDoPedido(ctx.pedidoDeA),
+    });
+    const assinatura = createHmac("sha256", SEGREDO_DO_GATEWAY).update(corpo).digest("hex");
+
+    const cabecalhos = { "content-type": "application/json", "x-assinatura": assinatura };
+
+    const primeira = await fetch(`${BASE}/api/v1/payments/webhook`, {
+      method: "POST",
+      headers: cabecalhos,
+      body: corpo,
+    });
+    const segunda = await fetch(`${BASE}/api/v1/payments/webhook`, {
+      method: "POST",
+      headers: cabecalhos,
+      body: corpo,
+    });
+
+    expect(primeira.status).toBe(200);
+    expect(segunda.status).toBe(200);
+
+    // O estado final e o mesmo depois de uma ou de duas confirmacoes.
+    const pedido = await fetch(`${BASE}/api/v1/orders/${ctx.pedidoDeA}`, {
+      headers: { authorization: `Bearer ${ctx.tokenClienteA}` },
+    });
+    expect((await pedido.json()).situacao).toBe("EM_PREPARO");
+  });
+
+  it("TS11: rajada de requisicoes da mesma origem e barrada com 429", async () => {
+    // A identidade do limite, para quem nao esta autenticado, e a origem da
+    // requisicao. Usar uma origem exclusiva isola este teste dos demais.
+    const origem = `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+    const cabecalhos = { "x-forwarded-for": origem };
+
+    let ultimaResposta: Response | null = null;
+    for (let tentativa = 0; tentativa < 70; tentativa++) {
+      ultimaResposta = await fetch(`${BASE}/api/v1/menu`, { headers: cabecalhos });
+      if (ultimaResposta.status === 429) break;
+    }
+
+    expect(ultimaResposta?.status).toBe(429);
+    // O cliente legitimo precisa saber quando voltar, para nao insistir e
+    // piorar a sobrecarga que o limite existe para conter.
+    expect(ultimaResposta?.headers.get("retry-after")).toBeTruthy();
+  });
+});
+
 async function totalDoPedido(pedidoId: string): Promise<number> {
   const resposta = await fetch(`${BASE}/api/v1/orders/${pedidoId}`, {
     headers: { authorization: `Bearer ${ctx.tokenClienteA}` },
