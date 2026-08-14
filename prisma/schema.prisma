@@ -71,3 +71,30 @@ model Payment {
   valorEmCentavos Int
   criadoEm        DateTime @default(now())
 }
+
+// Trilha de auditoria. Passo 1 da ordem de implementacao (secao 9.5 do
+// trabalho) e controle do risco R06: sem registro confiavel, nenhum outro
+// risco pode ser detectado, investigado ou comprovado.
+//
+// O modelo so recebe insercao. Nao existe rota que altere nem apague
+// registro, e o proprio acesso a trilha tambem e registrado.
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  // Quem executou. Fica nulo quando a acao foi anonima, como uma tentativa
+  // de login com e-mail inexistente.
+  autorId     Int?
+  autorPerfil String?
+  // O que aconteceu, em maiusculas: LOGIN_NEGADO, ACESSO_NEGADO_PERFIL, etc.
+  acao        String
+  // Sobre qual recurso, quando aplicavel: "pedido:42", "usuario:7".
+  alvo        String?
+  rota        String
+  origemIp    String?
+  agente      String?
+  // Detalhe adicional em texto. Nunca recebe senha, token ou dado de cartao.
+  detalhe     String?
+  criadoEm    DateTime @default(now())
+
+  @@index([autorId])
+  @@index([acao])
+}
