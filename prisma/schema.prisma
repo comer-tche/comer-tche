@@ -1,0 +1,73 @@
+// Modelo de dados do Comer-Tche.
+//
+// ATENCAO: nesta versao inicial os identificadores expostos pela API sao
+// numeros sequenciais (autoincrement). Isso e proposital: o risco R07 do
+// trabalho descreve exatamente esse problema, e a Decisao 3 da Etapa 3 troca
+// esses identificadores por UUID em um commit posterior.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  nome         String
+  telefone     String
+  endereco     String
+  // Perfis possiveis: CLIENTE, ENTREGADOR, RESTAURANTE, ADMIN
+  perfil       String   @default("CLIENTE")
+  criadoEm     DateTime @default(now())
+
+  pedidos Order[]
+}
+
+model MenuItem {
+  name       String
+  id         Int     @id @default(autoincrement())
+  descricao  String
+  precoEmCentavos Int
+  disponivel Boolean @default(true)
+
+  itensDePedido OrderItem[]
+}
+
+model Order {
+  id                 Int      @id @default(autoincrement())
+  clienteId          Int
+  cliente            User     @relation(fields: [clienteId], references: [id])
+  totalEmCentavos    Int
+  // Estados possiveis: AGUARDANDO_PAGAMENTO, PAGO, EM_PREPARO, ENTREGUE, CANCELADO
+  situacao           String   @default("AGUARDANDO_PAGAMENTO")
+  enderecoDeEntrega  String
+  criadoEm           DateTime @default(now())
+
+  itens    OrderItem[]
+  pagamento Payment?
+}
+
+model OrderItem {
+  id                   Int      @id @default(autoincrement())
+  pedidoId             Int
+  pedido               Order    @relation(fields: [pedidoId], references: [id])
+  itemDoCardapioId     Int
+  itemDoCardapio       MenuItem @relation(fields: [itemDoCardapioId], references: [id])
+  quantidade           Int
+  precoUnitarioEmCentavos Int
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  pedidoId        Int      @unique
+  pedido          Order    @relation(fields: [pedidoId], references: [id])
+  // Estados possiveis: PENDENTE, CONFIRMADO, RECUSADO
+  situacao        String   @default("PENDENTE")
+  valorEmCentavos Int
+  criadoEm        DateTime @default(now())
+}
