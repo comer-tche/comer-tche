@@ -98,3 +98,32 @@ model AuditLog {
   @@index([autorId])
   @@index([acao])
 }
+
+// Dispositivos ja reconhecidos para um usuario. Requisito RS03: o segundo
+// fator so e exigido quando o login vem de um aparelho que nunca foi visto,
+// para nao atrapalhar o uso normal.
+model KnownDevice {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int
+  // Guardamos o hash da impressao do dispositivo, e nao a impressao em si:
+  // se o banco vazar, ela nao serve para rastrear ninguem.
+  impressao  String
+  primeiroUso DateTime @default(now())
+  ultimoUso   DateTime @default(now())
+
+  @@unique([usuarioId, impressao])
+}
+
+// Desafio de segundo fator pendente. Vive poucos minutos e e apagado assim
+// que usado.
+model MfaChallenge {
+  id         String   @id
+  usuarioId  Int
+  // O codigo tambem e guardado como hash: quem ler o banco nao consegue
+  // completar o login de ninguem.
+  codigoHash String
+  impressao  String
+  tentativas Int      @default(0)
+  expiraEm   DateTime
+  criadoEm   DateTime @default(now())
+}
