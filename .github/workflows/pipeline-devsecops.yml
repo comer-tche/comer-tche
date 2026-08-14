@@ -150,7 +150,7 @@ jobs:
           exit 1
 
       - name: Varredura passiva
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "http://localhost:3000"
           # O relatorio e publicado como artefato do job. A condicao C4 exige
