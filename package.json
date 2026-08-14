@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:seguranca": "vitest run testes/seguranca.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

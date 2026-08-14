@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
@@ -14,15 +15,21 @@ const SENHA_DE_DESENVOLVIMENTO = "comer-tche-dev";
 async function main() {
   const senhaHash = await bcrypt.hash(SENHA_DE_DESENVOLVIMENTO, 12);
 
+  // Cada conta de teste ja nasce com um aparelho reconhecido. Sem isso, todo
+  // login dispararia o segundo fator (RS03) e os testes automatizados nao
+  // teriam como concluir, ja que o codigo sai por e-mail e nunca aparece na
+  // resposta da API em producao. A exigencia do segundo fator continua sendo
+  // verificada: o teste TS09 confirma que um aparelho desconhecido nao recebe
+  // token nenhum.
   const contas = [
-    { email: "cliente@exemplo.test", nome: "Cliente de Teste", perfil: "CLIENTE" },
-    { email: "outro.cliente@exemplo.test", nome: "Outro Cliente", perfil: "CLIENTE" },
-    { email: "entregador@exemplo.test", nome: "Entregador de Teste", perfil: "ENTREGADOR" },
-    { email: "admin@exemplo.test", nome: "Administrador", perfil: "ADMIN" },
+    { email: "cliente@exemplo.test", nome: "Cliente de Teste", perfil: "CLIENTE", aparelho: "aparelho-do-cliente-a" },
+    { email: "outro.cliente@exemplo.test", nome: "Outro Cliente", perfil: "CLIENTE", aparelho: "aparelho-do-cliente-b" },
+    { email: "entregador@exemplo.test", nome: "Entregador de Teste", perfil: "ENTREGADOR", aparelho: "aparelho-do-entregador" },
+    { email: "admin@exemplo.test", nome: "Administrador", perfil: "ADMIN", aparelho: "aparelho-do-admin" },
   ];
 
   for (const conta of contas) {
-    await banco.user.upsert({
+    const usuario = await banco.user.upsert({
       where: { email: conta.email },
       update: {},
       create: {
@@ -33,6 +40,16 @@ async function main() {
         endereco: "Rua de Teste, 100",
         perfil: conta.perfil,
       },
+    });
+
+    // A impressao e o sha256 do valor enviado no cabecalho x-dispositivo,
+    // o mesmo calculo de lib/segundo-fator.ts.
+    const impressao = createHash("sha256").update(conta.aparelho).digest("hex");
+
+    await banco.knownDevice.upsert({
+      where: { usuarioId_impressao: { usuarioId: usuario.id, impressao } },
+      update: {},
+      create: { usuarioId: usuario.id, impressao },
     });
   }
 
