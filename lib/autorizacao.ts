@@ -82,8 +82,8 @@ export async function exigirPerfil(
 // catalogada como IDOR (CWE-639) na secao 11.2.
 export async function exigirPropriedadeDoPedido(
   requisicao: Request,
-  pedidoId: number,
-): Promise<Veredito & { pedido?: { id: number; clienteId: number } }> {
+  pedidoId: string,
+): Promise<Veredito & { pedido?: { id: string; clienteId: number } }> {
   const comSessao = await exigirSessao(requisicao);
   if (!comSessao.autorizado) return comSessao;
 

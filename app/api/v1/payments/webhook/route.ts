@@ -47,9 +47,9 @@ export async function POST(requisicao: Request) {
     return Response.json({ erro: "Assinatura invalida" }, { status: 401 });
   }
 
-  const corpo = JSON.parse(corpoBruto) as { pedidoId?: number; valorEmCentavos?: number };
+  const corpo = JSON.parse(corpoBruto) as { pedidoId?: string; valorEmCentavos?: number };
 
-  if (typeof corpo.pedidoId !== "number" || typeof corpo.valorEmCentavos !== "number") {
+  if (typeof corpo.pedidoId !== "string" || typeof corpo.valorEmCentavos !== "number") {
     return Response.json({ erro: "Confirmacao mal formada" }, { status: 400 });
   }
 

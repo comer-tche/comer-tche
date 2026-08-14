@@ -39,7 +39,11 @@ model MenuItem {
 }
 
 model Order {
-  id                 Int      @id @default(autoincrement())
+  // Identificador aleatorio (UUID) no lugar de numero em sequencia.
+  // Decisao 3 da arquitetura: com 1, 2, 3... quem ve o proprio pedido adivinha
+  // o dos outros somando 1, e a varredura e automatizavel. Trata o risco R07
+  // em conjunto com a verificacao de propriedade do requisito RS02.
+  id                 String   @id @default(uuid())
   clienteId          Int
   cliente            User     @relation(fields: [clienteId], references: [id])
   totalEmCentavos    Int
@@ -54,7 +58,7 @@ model Order {
 
 model OrderItem {
   id                   Int      @id @default(autoincrement())
-  pedidoId             Int
+  pedidoId             String
   pedido               Order    @relation(fields: [pedidoId], references: [id])
   itemDoCardapioId     Int
   itemDoCardapio       MenuItem @relation(fields: [itemDoCardapioId], references: [id])
@@ -64,7 +68,7 @@ model OrderItem {
 
 model Payment {
   id              Int      @id @default(autoincrement())
-  pedidoId        Int      @unique
+  pedidoId        String   @unique
   pedido          Order    @relation(fields: [pedidoId], references: [id])
   // Estados possiveis: PENDENTE, CONFIRMADO, RECUSADO
   situacao        String   @default("PENDENTE")

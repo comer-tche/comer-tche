@@ -1,5 +1,6 @@
 import { banco } from "@/lib/banco";
 import { exigirPropriedadeDoPedido } from "@/lib/autorizacao";
+import { ocultarDadosAposEntrega } from "@/lib/minimizacao";
 
 // GET /api/v1/orders/{id}
 // Devolve um pedido especifico.
@@ -14,11 +15,11 @@ export async function GET(
   requisicao: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const pedidoId = Number(id);
+  const { id: pedidoId } = await params;
 
-  // Identificador que nao e numero nunca chega ao banco.
-  if (!Number.isInteger(pedidoId) || pedidoId <= 0) {
+  // Formato de UUID conferido antes de qualquer consulta.
+  const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!FORMATO_UUID.test(pedidoId)) {
     return Response.json({ erro: "Pedido nao encontrado" }, { status: 404 });
   }
 
@@ -35,5 +36,9 @@ export async function GET(
     },
   });
 
-  return Response.json(pedido);
+  if (!pedido) {
+    return Response.json({ erro: "Pedido nao encontrado" }, { status: 404 });
+  }
+
+  return Response.json(ocultarDadosAposEntrega(pedido, veredito.sessao));
 }
