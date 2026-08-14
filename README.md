@@ -68,3 +68,45 @@ A aplicação sobe em `http://localhost:3000`. As contas criadas pelo seed usam 
 | `GET` | `/api/v1/orders/{id}` | Consulta um pedido |
 | `POST` | `/api/v1/payments/webhook` | Recebe a confirmação de pagamento do gateway |
 | `GET` | `/api/v1/admin/users` | Lista os usuários (rota administrativa) |
+
+## Os controles de segurança e de onde eles vieram
+
+Nenhum controle aqui foi escolhido durante a programação. Cada um tem origem em um risco identificado antes de existir código, e o commit que o aplica cita a seção correspondente.
+
+| Controle no código | Requisito | Risco tratado | Onde está |
+| ------------------ | --------- | ------------- | --------- |
+| Trilha de auditoria, só de inserção | — | R06 | `lib/auditoria.ts` |
+| Perfil verificado no servidor, com negação por padrão | RS01 | R10 | `lib/autorizacao.ts` |
+| Verificação de propriedade do recurso | RS02 | R07 | `lib/autorizacao.ts` |
+| Segundo fator em aparelho não reconhecido | RS03 | R01 | `lib/segundo-fator.ts` |
+| Bloqueio após cinco tentativas em 15 minutos | RS03 | R01 | `app/api/v1/auth/login/route.ts` |
+| Valor do pedido recalculado a partir do banco | RS04 | R03 | `app/api/v1/orders/route.ts` |
+| Assinatura HMAC-SHA256 na confirmação de pagamento | RS04 | R04 | `app/api/v1/payments/webhook/route.ts` |
+| Identificador do pedido em UUID | Decisão 3 | R07 | `prisma/schema.prisma` |
+| Telefone e endereço ocultos após a entrega | Decisão 3 | R08 | `lib/minimizacao.ts` |
+
+### Uma decisão que a implementação obrigou a rever
+
+A Decisão 1 da arquitetura pede "validação centralizada de autorização". Em Next.js, o lugar aparentemente natural para isso é o `middleware.ts`, e ele é justamente o lugar errado: a **CVE-2025-29927**, de severidade 9.1, permitia pular o middleware inteiro enviando um cabeçalho, e a descrição oficial diz que a falha atinge quem faz a checagem de autorização ali. O CWE dessa vulnerabilidade é o **CWE-285**, o mesmo que a análise já havia mapeado para o risco R10.
+
+A centralização foi mantida, mas em um módulo único chamado dentro de cada rota. O `middleware.ts` não decide acesso. O raciocínio completo está comentado em `lib/autorizacao.ts`.
+
+## Testes de segurança
+
+```bash
+npm run build && npm run start &   # a aplicação precisa estar no ar
+npm test
+```
+
+São os oito testes definidos na Etapa 4 do trabalho, com os mesmos identificadores (TS01 a TS08) e os mesmos resultados esperados, mais o TS09, que verifica a exigência do segundo fator. Eles rodam contra a API, e não contra as funções internas, porque o que precisa ser verificado é o comportamento visto por quem chama de fora.
+
+## Pipeline
+
+O arquivo [`.github/workflows/pipeline-devsecops.yml`](.github/workflows/pipeline-devsecops.yml) implementa as quatro condições de bloqueio definidas na análise. Cada job leva o identificador da condição, para que a falha aponte qual regra barrou a entrega:
+
+| Job | Barra quando |
+| --- | ------------ |
+| `C1` | algum teste de autorização ou de integridade falha |
+| `C2` | o gitleaks encontra segredo versionado no histórico |
+| `C3` | o `npm audit` encontra dependência com vulnerabilidade alta ou crítica |
+| `C4` | a varredura dinâmica com o ZAP registra achado sem análise |
