@@ -75,10 +75,22 @@ jobs:
           # antigos, e nao apenas o estado atual dos arquivos.
           fetch-depth: 0
 
-      - name: Procurar segredos no historico
-        uses: gitleaks/gitleaks-action@v2
+      # O binario do gitleaks e livre, mas a action oficial passou a exigir
+      # licenca paga para repositorios de organizacao. Por isso a ferramenta e
+      # baixada e executada diretamente, com a versao fixada para a varredura
+      # ser reproduzivel.
+      - name: Instalar o gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSAO: "8.30.1"
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSAO}/gitleaks_${VERSAO}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks version
+
+      - name: Procurar segredos no historico
+        # --redact impede que o proprio log do pipeline exponha o segredo
+        # encontrado, o que apenas trocaria um vazamento por outro.
+        run: ./gitleaks detect --source . --redact --verbose
 
   c3-dependencia-vulneravel:
     name: "C3: dependencia vulneravel"
